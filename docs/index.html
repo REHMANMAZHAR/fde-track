@@ -1,0 +1,539 @@
+<title>RMK's FDE Academy</title>
+<style>
+  /* LMS: left module/lesson rail, single-lesson reading pane. Learn → Watch → Try → Quiz, per-lesson progress. Green finance identity carried from the track. */
+  :root{
+    --bg:#f4f1e9; --surface:#fffdf8; --surface-2:#efe9db; --rail:#183a37;
+    --fg:#183a37; --muted:#6f7d78; --faint:#9aa39d; --border:#dcd7ca;
+    --accent:#1c8c78; --accent-soft:#1c8c7820; --warn:#9a6b12; --warn-soft:#9a6b1218;
+    --gold:#e4ab4c; --bad:#a8402f; --bad-soft:#a8402f18;
+    --shadow:0 18px 50px rgba(34,55,51,.09);
+    --font-display:Georgia,"Times New Roman",serif;
+    --font-body:Arial,Helvetica,sans-serif;
+    --font-mono:"SF Mono",ui-monospace,Menlo,monospace;
+  }
+
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);line-height:1.55;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4{font-family:var(--font-display);line-height:1.15;margin:0;text-wrap:balance}
+  code{font-family:var(--font-mono);font-size:.86em;background:var(--surface-2);padding:1px 5px;border-radius:5px;border:1px solid var(--border)}
+  .mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+  /* top bar */
+  .top{position:sticky;top:env(safe-area-inset-top,0px);z-index:40;display:flex;align-items:center;gap:12px;padding:11px 16px;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+  .brand{font-family:var(--font-display);font-weight:800;font-size:1rem;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+  .brand .dot{width:10px;height:10px;border-radius:3px;background:var(--accent)}
+  .top .spacer{flex:1}
+  .gbar{display:flex;align-items:center;gap:9px;min-width:130px;max-width:300px;flex:1}
+  .gbar .bar{flex:1;height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden;min-width:0}
+  .gbar .bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .35s}
+  .gbar .pct{font-family:var(--font-mono);font-size:.74rem;color:var(--muted)}
+  .iconbtn{border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:8px;padding:6px 9px;font-family:var(--font-mono);font-size:.72rem;cursor:pointer}
+  .iconbtn:hover{color:var(--fg);border-color:var(--faint)}
+  .menu{display:none}
+
+  /* shell */
+  .shell{display:flex;align-items:stretch;min-height:0}
+  .rail{width:290px;flex-shrink:0;background:var(--rail);border-right:1px solid var(--border);overflow-y:auto;height:calc(100vh - 50px);position:sticky;top:50px;padding:14px 10px 40px}
+  .mod{margin-bottom:6px}
+  .mod-h{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;cursor:pointer;user-select:none}
+  .mod-h:hover{background:var(--surface-2)}
+  .mod-h .mi{font-family:var(--font-mono);font-size:.62rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+  .mod-h h3{font-size:.86rem;font-weight:700;letter-spacing:-.01em;flex:1;min-width:0}
+  .mod-h .car{font-family:var(--font-mono);color:var(--faint);font-size:.7rem;transition:transform .2s}
+  .mod.open .car{transform:rotate(90deg)}
+  .mod-h .mp{font-family:var(--font-mono);font-size:.64rem;color:var(--faint)}
+  .lessons{display:none;margin:2px 0 8px;padding-left:6px}
+  .mod.open .lessons{display:block}
+  .lrow{display:flex;align-items:flex-start;gap:9px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:.82rem;color:var(--muted);line-height:1.35}
+  .lrow:hover{background:var(--surface-2);color:var(--fg)}
+  .lrow.active{background:var(--accent-soft);color:var(--fg);font-weight:600}
+  .lrow .tick{flex-shrink:0;width:16px;height:16px;border-radius:50%;border:1.5px solid var(--faint);margin-top:1px;position:relative}
+  .lrow.done .tick{background:var(--accent);border-color:var(--accent)}
+  .lrow.done .tick::after{content:"✓";position:absolute;inset:0;color:#fff;font-size:.62rem;display:flex;align-items:center;justify-content:center}
+  .lrow.outline .tick{border-style:dashed}
+
+  /* lesson pane */
+  .pane{flex:1;min-width:0;height:calc(100vh - 50px);overflow-y:auto}
+  .lesson{max-width:760px;margin:0 auto;padding:26px 22px 80px}
+  .crumb{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .lesson h1{font-size:clamp(1.5rem,4vw,2.1rem);font-weight:800;letter-spacing:-.02em}
+  .lesson>.sub{color:var(--muted);font-size:1rem;margin-top:8px}
+
+  .seg{margin-top:24px}
+  .seg-k{font-family:var(--font-mono);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;display:flex;align-items:center;gap:7px}
+  .seg-k::before{content:"";width:16px;height:2px;background:var(--accent);border-radius:2px}
+  .learn p{font-size:.96rem;margin:10px 0}
+  .learn ul{font-size:.94rem;color:var(--muted);padding-left:1.15em;margin:8px 0}
+  .learn li{margin:5px 0}
+  .learn b{color:var(--fg)}
+
+  .embed{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:14px;overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow)}
+  .embed iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .embed-meta{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:9px;font-size:12px;color:var(--muted);font-family:var(--font-mono)}
+
+  pre.code{font-family:var(--font-mono);font-size:.85rem;background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:14px 16px;overflow-x:auto;white-space:pre;color:var(--fg);margin:0}
+  .hint{font-size:.86rem;color:var(--accent);margin-top:9px}
+  .reveal{margin-top:9px}
+  .reveal button{font-family:var(--font-mono);font-size:.74rem;background:none;border:1px dashed var(--faint);color:var(--muted);border-radius:7px;padding:5px 10px;cursor:pointer}
+  .reveal .ans{display:none;font-size:.86rem;color:var(--fg);background:var(--surface-2);border-radius:8px;padding:10px 12px;margin-top:8px}
+  .reveal.show .ans{display:block}
+  .reveal.show button{display:none}
+  .task{font-size:.94rem;color:var(--fg);background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 30%,transparent);border-radius:11px;padding:13px 15px}
+
+  .quiz{border:1px solid var(--border);border-radius:12px;overflow:hidden}
+  .q{padding:14px 16px;border-bottom:1px solid var(--border)}
+  .q:last-child{border-bottom:none}
+  .q .qt{font-size:.92rem;font-weight:600;margin-bottom:10px}
+  .q .qt code{font-weight:500}
+  .opts{display:flex;flex-direction:column;gap:7px}
+  .opt{text-align:left;font-family:var(--font-body);font-size:.88rem;color:var(--fg);background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;cursor:pointer}
+  .opt:hover:not(:disabled){border-color:var(--faint)}
+  .opt:disabled{cursor:default}
+  .opt.correct{background:var(--accent-soft);border-color:var(--accent)}
+  .opt.wrong{background:var(--bad-soft);border-color:var(--bad)}
+  .explain{display:none;font-size:.84rem;color:var(--muted);margin-top:9px;padding-left:11px;border-left:2px solid var(--accent)}
+  .explain.show{display:block}
+
+  .lfoot{display:flex;align-items:center;gap:12px;margin-top:34px;padding-top:20px;border-top:1px solid var(--border);flex-wrap:wrap}
+  .complete{flex:1;min-width:180px;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-family:var(--font-body);font-size:.92rem;font-weight:600;color:#fff;background:var(--accent);border:none;border-radius:10px;padding:12px 16px;cursor:pointer}
+  .complete.isdone{background:var(--surface-2);color:var(--muted)}
+  .nav{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:.78rem;background:var(--surface);border:1px solid var(--border);color:var(--fg);border-radius:9px;padding:10px 13px;cursor:pointer}
+  .nav:disabled{opacity:.4;cursor:default}
+
+  .ob{font-size:.84rem;color:var(--faint);background:var(--surface-2);border-radius:9px;padding:10px 13px;margin-top:4px}
+  .reset{font-family:var(--font-mono);font-size:.72rem;color:var(--bad);background:none;border:1px solid var(--bad);border-radius:8px;padding:6px 11px;cursor:pointer}
+  .scrim{display:none;position:fixed;inset:0;background:#0007;z-index:30}
+
+  @media (max-width:820px){
+    .menu{display:inline-flex}
+    .rail{position:fixed;left:0;top:0;height:100%;z-index:35;transform:translateX(-100%);transition:transform .25s;box-shadow:var(--shadow);padding-top:18px}
+    .rail.open{transform:none}
+    .scrim.open{display:block}
+    .pane{height:auto}
+  }
+
+  /* ---- paper / ink / gold identity ---- */
+  body{background:radial-gradient(circle at 94% 2%,rgba(225,172,76,.12),transparent 24rem),var(--bg)}
+  .top{background:rgba(244,241,233,.9)}
+  .brand .dot{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font:700 13px var(--font-display);color:#183a37}
+  .brand .dot::after{content:"F"}
+  .gbar .bar>i{background:var(--gold)}
+  .lesson h1{font-family:var(--font-display);font-weight:700;letter-spacing:-.5px}
+  .crumb{color:#8a8272}
+  .seg-k{color:var(--accent)}
+  .seg-k::before{background:var(--gold)}
+  .q .qt{font-family:var(--font-display)}
+  .complete{background:var(--gold);color:#183a37}
+  .watch{color:#155e50;background:#e0eee8;border-color:#bcd9cf}
+  pre.code{background:#1c2a27;color:#e9f1ed;border-color:#16211f}
+  .task{background:#fff6e6;border-color:#ecd6a8}
+  /* dark ink sidebar */
+  .rail{color:#eef3f1;border-right:0}
+  .mod-h{color:#cdddd8}
+  .mod-h:hover{background:rgba(255,255,255,.07)}
+  .mod-h h3{color:#f3efe4;font-family:var(--font-display)}
+  .mod-h .mi,.mod-h .car,.mod-h .mp{color:#8fb0a9}
+  .lrow{color:#aec3be}
+  .lrow:hover{background:rgba(255,255,255,.06);color:#fff}
+  .lrow.active{background:rgba(228,171,76,.16);color:#fff;font-weight:700;box-shadow:inset 3px 0 0 var(--gold)}
+  .lrow .tick{border-color:#5f827b}
+  .lrow.done .tick{background:var(--gold);border-color:var(--gold)}
+  .lrow.done .tick::after{color:#183a37}
+  .reset{color:#d8b68a;border-color:rgba(255,255,255,.18)}
+</style>
+
+<div class="top">
+  <button class="iconbtn menu" id="menuBtn" aria-label="Menu">☰</button>
+  <div class="brand"><span class="dot"></span>FDE Academy</div>
+  <div class="spacer"></div>
+  <div class="gbar"><div class="bar"><i id="gFill"></i></div><span class="pct mono" id="gPct">0%</span></div>
+  <button class="iconbtn" id="themeBtn" aria-label="Theme">◐</button>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<div class="shell">
+  <nav class="rail" id="rail"></nav>
+  <main class="pane" id="pane"><div class="lesson" id="lesson"></div></main>
+</div>
+
+<script>
+/* ============ COURSE DATA ============ */
+const COURSE = [
+  { id:"m-start", mi:"Welcome", title:"Start here", weeks:"", lessons:[
+    { id:"welcome", t:"How this academy works", learn:`
+      <p>Welcome, RMK. This is your full Forward Deployed Engineer course, built around your real baseline: strong finance, operations and stakeholder skills, a quant background — and the one gap we're closing, writing and reading code.</p>
+      <ul>
+        <li><b>Pace:</b> ~3 hrs/day in 2–3 short sittings. Whole path to FDE-capable: ~5–6 months.</li>
+        <li><b>Each lesson has four parts:</b> <b>Learn</b> (read here) · <b>Watch</b> (jumps to the exact minute of a free video) · <b>Try</b> (predict, then run in VS Code) · a quick <b>Check</b>.</li>
+        <li><b>The one rule:</b> never keep code you can't explain. AI writes → you read and explain every line → then you keep it.</li>
+        <li><b>Progress</b> saves on this device. Tick <b>Mark complete</b> at the bottom of each lesson; the rail shows ticks and your % is up top.</li>
+      </ul>
+      <p>Stages 0–2 (your next ~2 months) are built lesson-by-lesson. Stages 3–5 are mapped as outlines with their anchor courses — come back and I'll expand each into daily lessons as you reach it.</p>`,
+      resources:true },
+  ]},
+
+  { id:"m0", mi:"Stage 0", title:"Setup & the one habit", weeks:"Week 1", lessons:[
+    { id:"s0-1", t:"Run your first line", learn:`
+      <p>You've installed Python and VS Code — good, that's the hard setup done. Let's confirm it works. In VS Code: <b>File → New File</b>, save it as <code>hello.py</code>, type the code below, then press the ▶ Run button (top-right) or right-click → Run Python File.</p>
+      <p>Seeing output in the panel at the bottom means your whole setup is working. Line 2 also teaches a trap: Python does <code>*</code> before <code>+</code>.</p>`,
+      watch:{t:"First program", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=370s", meta:"Mosh 6:10"},
+      code:`print("hello RMK")\nprint(2 + 2 * 10)`,
+      hint:"Predict line 2 before running. It's 22, not 40 — multiplication happens first.",
+      quiz:[{q:"What does <code>print(2 + 2 * 10)</code> show?",o:["40","22","220","4"],a:1,e:"Python multiplies before it adds: 2*10=20, then +2 = 22."}] },
+
+    { id:"s0-2", t:"The one habit that makes you an engineer", learn:`
+      <p>This is the whole bridge from "AI builds for me" to "I can build". From now on, flip your habit:</p>
+      <ul>
+        <li>AI writes the code → <b>you read it and say what each line does</b> → only then do you keep it.</li>
+        <li>If you can't explain a line, ask AI to explain <b>that one line</b> simply, and write the explanation in your own words.</li>
+      </ul>
+      <p>Take a line from one of your own tools, e.g. <code>df = df[df['volume'] > 100000]</code> — you should be able to say "keep only rows where volume is above 100,000." Do only this, consistently, and in about three weeks code stops being invisible.</p>`,
+      quiz:[{q:"The core habit this whole course depends on is:",o:["Memorising syntax","Never keeping code you can't explain","A faster laptop","Avoiding AI entirely"],a:1,e:"Reading and explaining every line you keep is what converts AI-orchestration into real understanding."}] },
+
+    { id:"s0-3", t:"Your rhythm + where to keep everything", learn:`
+      <p>Two setup decisions, then you're ready for Stage 1.</p>
+      <ul>
+        <li><b>Rhythm:</b> split your 3 hours into 2–3 sittings across the day. Pick fixed slots so it's automatic. Short and frequent beats one long block.</li>
+        <li><b>Where it lives:</b> this page is your dashboard — bookmark/pin it. Make one folder (or a GitHub repo) called <code>fde-track</code> with a <code>notes.md</code> file. Save each day's practice as <code>day01.py</code>, <code>day02.py</code>, and write what you learned in <code>notes.md</code>.</li>
+      </ul>
+      <p>That notes file <i>is</i> the "explain it back" habit, written down — and by Stage 2 the folder becomes your first portfolio piece.</p>`,
+      quiz:[{q:"Best way to use your 3 hours a day?",o:["One 3-hour marathon at night","2–3 shorter sittings through the day","Only when you feel like it","Only when something breaks"],a:1,e:"Spacing the work into shorter sittings helps it stick — and matches your real schedule."}] },
+  ]},
+
+  { id:"m1", mi:"Stage 1 · Week A", title:"Read code — values & lists", weeks:"Week 2", lessons:[
+    { id:"s1-1", t:"First program + variables", learn:`
+      <p>A <b>variable</b> is a labelled box holding a value. <code>price = 312</code> puts 312 in a box named <code>price</code>. <code>print(...)</code> shows a value. Code runs top to bottom, so by line 3 both boxes are filled and it prints their product.</p>`,
+      watch:{t:"Variables", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=783s", meta:"Mosh 13:03"},
+      code:`price = 312\nqty = 100\nprint(price * qty)`,
+      hint:"Predict the number first, then run." },
+
+    { id:"s1-2", t:"Lists", learn:`
+      <p>A <b>list</b> holds many values in order, inside <code>[ ]</code>. Positions start at <b>0</b>, so <code>closes[0]</code> is the first item. <code>.append(x)</code> adds to the end; <code>len(list)</code> counts items. This is exactly the diagnostic question you missed — own it today.</p>`,
+      watch:{t:"Lists + List Methods", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=7550s", meta:"Mosh 1:55:50"},
+      code:`closes = [310, 312, 318]\ncloses.append(320)\nprint(len(closes))\nprint(closes[0])`,
+      hint:"Predict both printed lines, then run.",
+      quiz:[{q:"After <code>nums=[1,2,3]; nums.append(4)</code>, what is <code>len(nums)</code>?",o:["3","4","10","[1,2,3,4]"],a:1,e:"append adds one item → 4 items → len is 4."}] },
+
+    { id:"s1-3", t:"Looping a list", learn:`
+      <p>A <b>for loop</b> runs its indented block once per item. Read <code>for c in closes:</code> as "for each value in the list, call it <code>c</code> and do this." So it prints each close on its own line, in order.</p>`,
+      watch:{t:"For Loops", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=6108s", meta:"Mosh 1:41:48"},
+      code:`closes = [310, 312, 318]\nfor c in closes:\n    print(c)`,
+      hint:"How many lines print, and what are they?" },
+
+    { id:"s1-4", t:"Strings & f-strings", learn:`
+      <p>Text in quotes is a <b>string</b>. An <b>f-string</b> (<code>f"..."</code>) drops a variable into text by wrapping its name in <code>{ }</code>. It's how you build readable output like a price line or report row.</p>`,
+      watch:{t:"Strings + Formatted Strings", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=1771s", meta:"Mosh 29:31"},
+      code:`ticker = "ENGRO"\nprice = 312\nprint(f"{ticker} trades at {price}")`,
+      hint:"Predict the exact text, then run." },
+
+    { id:"s1-5", t:"Review + checkpoint", learn:`
+      <p>No new video. Re-watch any chapter that felt shaky, then test yourself: predict 10 mixed snippets from this week before running them. If the check below is obvious to you now, Week A is done.</p>`,
+      code:`x = [5, 6]\nx.append(7)\nprint(len(x))\nprint(x[1])`,
+      reveal:"len is 3; x[1] is 6 (position 1 is the second item).",
+      quiz:[{q:"What is <code>x[1]</code> for <code>x=[5,6,7]</code>?",o:["5","6","7","1"],a:1,e:"Positions start at 0, so x[1] is the second item: 6."}] },
+  ]},
+
+  { id:"m2", mi:"Stage 1 · Week B", title:"Read code — dicts & decisions", weeks:"Week 3", lessons:[
+    { id:"s1-6", t:"Dictionaries", learn:`
+      <p>A <b>dictionary</b> stores values under names (<b>keys</b>) instead of positions: <code>{"ticker":"ENGRO","price":312}</code>. Read a value by its key — <code>stock["price"]</code> gives 312. Think of it as one labelled row of data.</p>`,
+      watch:{t:"Dictionaries", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=8301s", meta:"Mosh 2:18:21"},
+      code:`stock = {"ticker": "ENGRO", "price": 312}\nprint(stock["price"])`,
+      hint:"Predict, then run.",
+      quiz:[{q:"How do you get 312 from <code>d={'ticker':'ENGRO','price':312}</code>?",o:["d.312","d['price']","d(price)","price.d"],a:1,e:"Index a dict by its key: d['price']."}] },
+
+    { id:"s1-7", t:"range() — the one you missed", learn:`
+      <p><code>range(3)</code> produces <b>0, 1, 2</b> — it starts at 0 and stops <i>before</i> 3. So the loop runs three times with <code>i</code> = 0, 1, 2 and prints <code>i*2</code> each time: 0, 2, 4. (You answered 4, 8, 12 before — this lesson is the fix.)</p>`,
+      watch:{t:"For Loops (range)", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=6108s", meta:"Mosh 1:41:48"},
+      code:`for i in range(3):\n    print(i * 2)`,
+      hint:"It prints 0, 2, 4 — make sure you see why, not just that.",
+      quiz:[{q:"<code>for i in range(3): print(i)</code> prints:",o:["1 2 3","0 1 2","0 1 2 3","3"],a:1,e:"range(3) is 0, 1, 2 — starts at 0, stops before 3."}] },
+
+    { id:"s1-8", t:"Conditions (if / else)", learn:`
+      <p><b>if</b> runs a block only when a test is true; <b>else</b> runs otherwise. Read <code>if change &gt; 0:</code> as "if change is positive, print up; else print down." This is how code makes decisions.</p>`,
+      watch:{t:"If Statements", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=3497s", meta:"Mosh 58:17"},
+      code:`change = 4\nif change > 0:\n    print("up")\nelse:\n    print("down")`,
+      hint:"Change 4 to a negative number and predict again." },
+
+    { id:"s1-9", t:"Loop + dict together", learn:`
+      <p>Real data is usually a <b>list of dictionaries</b> — one dict per stock. You loop the list, and each time pull a key from the current dict. This single pattern sits behind almost every data tool you'll build.</p>`,
+      watch:{t:"Re-watch Lists + Dicts", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=7550s", meta:"Mosh 1:55 & 2:18"},
+      code:`stocks = [{"t": "ENGRO"}, {"t": "LUCK"}]\nfor s in stocks:\n    print(s["t"])`,
+      hint:"Predict the two printed lines." },
+
+    { id:"s1-10", t:"Review + checkpoint", learn:`
+      <p>No new video. Predict 10 mixed snippets combining dicts, loops and ifs. If a type still trips you, re-watch just that chapter before the check.</p>`,
+      quiz:[{q:"<code>for i in range(2): print(i+1)</code> prints:",o:["1 2","0 1","1 2 3","2"],a:0,e:"range(2) is 0,1; i+1 gives 1 then 2."}] },
+  ]},
+
+  { id:"m3", mi:"Stage 1 · Week C", title:"Read code — functions & bugs", weeks:"Week 4", lessons:[
+    { id:"s1-11", t:"Functions", learn:`
+      <p>A <b>function</b> is a named, reusable block. <code>def area(w, h):</code> defines one taking two inputs; <code>return</code> hands a result back. You "call" it with <code>area(3,4)</code> and get 12. Functions are how every real program is organised.</p>`,
+      watch:{t:"Functions + Parameters", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=9031s", meta:"Mosh 2:30:31"},
+      code:`def area(w, h):\n    return w * h\nprint(area(3, 4))`,
+      hint:"Predict, then run.",
+      quiz:[{q:"A function is best described as:",o:["A type of file","A reusable block that takes inputs and returns a result","A website","A database table"],a:1,e:"Functions package reusable logic you can reason about — the building block of everything ahead."}] },
+
+    { id:"s1-12", t:"Write your own", learn:`
+      <p>Now you write one. A % change function is finance you already know, in code: <code>(new − old) / old × 100</code>. Write it, call it with two prices, and check against your own mental math.</p>`,
+      watch:{t:"Return + Reusable Function", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=9885s", meta:"Mosh 2:44:45"},
+      code:`def percent_change(old, new):\n    return (new - old) / old * 100\nprint(percent_change(300, 312))`,
+      hint:"Predict the % (it's 4.0), then run." },
+
+    { id:"s1-13", t:"Spot the bug", learn:`
+      <p>Reading code means catching what's wrong. A <code>def</code> line must end with a colon <code>:</code> — the snippet below is missing it (the exact diagnostic Q3 bug). Python even tells you: "SyntaxError". Fix it, run it, and read the error message it gave before the fix.</p>`,
+      watch:{t:"Exceptions / errors", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=10422s", meta:"Mosh 2:53:42"},
+      code:`def add(a, b)\n    return a + b`,
+      reveal:"Add a colon after (a, b):  →  def add(a, b):  then print(add(2,3)) gives 5.",
+      hint:"What's missing after (a, b)?" },
+
+    { id:"s1-14", t:"Read your own real code", learn:`
+      <p>The payoff. Open one of your own Streamlit tools. Pick 15 lines and explain each in your own words in <code>notes.md</code>. Only ask Claude to <i>confirm</i> your explanation — never to replace it.</p>
+      <p>You'll suddenly recognise variables, lists, loops, ifs and functions you couldn't see two weeks ago. That recognition is the entire goal of Stage 1.</p>`,
+      task:"Deliverable: 15 lines of your own code, each explained in one sentence in notes.md." },
+
+    { id:"s1-15", t:"Stage 1 final check", learn:`
+      <p>Re-take all four diagnostic code questions (append/len, range loop, the colon bug, dict access) with no help and no AI. All correct? Tick this lesson, and your honest answer to "can you read code?" flips from <b>no</b> to <b>yes</b>.</p>`,
+      quiz:[
+        {q:"<code>nums=[1,2,3]; nums.append(4); print(len(nums))</code> →",o:["3","4","7","[1,2,3,4]"],a:1,e:"4 items after append."},
+        {q:"<code>for i in range(3): print(i*2)</code> →",o:["0 2 4","2 4 6","4 8 12","0 1 2"],a:0,e:"i is 0,1,2 → 0,2,4."},
+        {q:"What's wrong with <code>def add(a,b)</code> ?",o:["Nothing","Missing a colon :","Wrong name","Needs a comma"],a:1,e:"A def line must end with a colon."}
+      ] },
+  ]},
+
+  { id:"m4", mi:"Stage 2", title:"Write code + your first owned tool", weeks:"Weeks 4–7", lessons:[
+    { id:"s2-1", t:"From reading to writing", learn:`
+      <p>Stage 1 was reading; Stage 2 is writing small code yourself and shipping one finance tool you understand top to bottom. Warm up by writing five tiny scripts from a blank file — no copy-paste:</p>
+      <ul>
+        <li>Print your name and today's date as text.</li>
+        <li>Store 3 prices in a list and print the highest with <code>max()</code>.</li>
+        <li>Store a stock as a dict and print one f-string line about it.</li>
+        <li>Loop 1 to 5 and print each squared.</li>
+        <li>Write an if/else that prints "gain" or "loss" from a number.</li>
+      </ul>`,
+      hint:"Struggling is the point. Write first, then check with AI — explain every fix.",
+      quiz:[{q:"Why write these from a blank file instead of copying?",o:["To waste time","Because producing code yourself is the skill Stage 2 builds","To use more electricity","AI requires it"],a:1,e:"Reading was Stage 1; producing code unaided is the new muscle."}] },
+
+    { id:"s2-2", t:"Functions you write", learn:`
+      <p>Package your logic into functions you can reuse. Write two today: a % change, and one that labels a move. Notice the second <i>calls</i> the first — functions building on functions is how real tools are structured.</p>`,
+      watch:{t:"Functions (recap)", href:"https://www.youtube.com/watch?v=_uQrJ0TkZlc&t=9031s", meta:"Mosh 2:30:31"},
+      code:`def pct(old, new):\n    return (new - old) / old * 100\n\ndef label(old, new):\n    change = pct(old, new)\n    if change > 0:\n        return "gain"\n    return "loss"\n\nprint(pct(300, 312), label(300, 312))`,
+      hint:"Predict both outputs (4.0 and gain), then run." },
+
+    { id:"s2-3", t:"Reading a CSV of prices", learn:`
+      <p>Tools work on data files, not hand-typed lists. A <b>CSV</b> is a plain spreadsheet (comma-separated). For finance data, the easiest path is the <b>pandas</b> library: one line reads the whole file into a table.</p>
+      <p>Install once in VS Code's terminal: <code>pip install pandas</code>. Make a small <code>prices.csv</code> with columns <code>ticker,close</code> and a few rows, then:</p>`,
+      watch:{t:"Official pandas read_csv docs", href:"https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html", meta:"reference"},
+      code:`import pandas as pd\ndf = pd.read_csv("prices.csv")\nprint(df)\nprint(df["close"].mean())`,
+      hint:"df is the whole table; df['close'].mean() is the average close. Ask AI to explain any line you can't.",
+      task:"Make a prices.csv with 5 PSX tickers and their closes, then print the average." },
+
+    { id:"s2-4", t:"Loop the data, compute something", learn:`
+      <p>Now combine everything: loop the rows, compute, and decide. This little script reads your CSV and prints which stocks closed above the average — your first real piece of analysis in code.</p>`,
+      code:`import pandas as pd\ndf = pd.read_csv("prices.csv")\navg = df["close"].mean()\nfor _, row in df.iterrows():\n    if row["close"] > avg:\n        print(row["ticker"], "above average")`,
+      hint:"iterrows() hands you one row at a time. Explain each line in notes.md before moving on." },
+
+    { id:"s2-5", t:"Project — rebuild one of your tools", learn:`
+      <p>The big one. Pick one simple tool you already have (a gainers/losers screener is ideal) and rebuild it with AI — but this time, <b>explain every line as you go</b>. You'll still use AI; the difference is you can now point at any line and say what it does.</p>
+      <p>That's the line between a tool you <i>have</i> and one you <i>own</i> — and owning it is what lets you fix it when it breaks, which is the core FDE skill.</p>`,
+      task:"A working finance tool, in your fde-track folder, where you can explain every line." },
+
+    { id:"s2-6", t:"Ship it — GitHub, README, demo", learn:`
+      <p>Make it visible. Push the tool to a GitHub repo, write a <code>README.md</code> in your own words (what it does, how to run it), and record a 2–3 minute screen walkthrough explaining how it works.</p>
+      <p>That video + repo is your <b>first portfolio asset</b> — proof you can build <i>and</i> explain, which is exactly what a client or employer looks for.</p>`,
+      task:"Public repo + README + a short demo video link saved in notes.md.",
+      quiz:[{q:"Why does the demo video matter as much as the code?",o:["It doesn't","It proves you understand and can explain what you built","It makes the repo bigger","GitHub requires it"],a:1,e:"Being able to explain your build is the FDE differentiator — the video is the proof."}] },
+  ]},
+
+  { id:"m5", mi:"Stage 3 · outline", title:"APIs & LLMs", weeks:"Weeks 7–11", outline:true, lessons:[
+    { id:"s3-o", t:"What this stage covers", outline:true, learn:`
+      <p>This stage turns you from "uses AI" into "builds with AI". You'll learn what an API is, call the Claude API from your own code, get structured JSON out, and give the model a tool your code runs. Earning target: first paid work ($300–1,000).</p>
+      <p><b>Topics I'll build into daily lessons:</b> APIs & JSON · the Claude Messages API & system prompts · structured output · tool use (function calling) · shipping it as a Streamlit app.</p>`,
+      resources3:true },
+    { id:"s3-o2", t:"When you reach here", outline:true, learn:`
+      <p>Come back and tell me you've finished Stage 2, and I'll expand this into the same day-by-day format — Learn / Watch / Try / Check — tuned to a finance tool (e.g. extracting clean data from PSX announcements). Nothing to do here yet.</p>` },
+  ]},
+
+  { id:"m6", mi:"Stage 4 · outline", title:"RAG, agents & a real product", weeks:"Weeks 11–16", outline:true, lessons:[
+    { id:"s4-o", t:"What this stage covers", outline:true, learn:`
+      <p>You'll build grounded document Q&A (RAG) and a multi-step agent, then package it into something real people use. Earning target: pilot users or a contract ($1,000–3,000).</p>
+      <p><b>Topics:</b> embeddings & retrieval (answering over documents too big for one prompt) · the agent loop (reason → act → observe) · self-critique · getting 3 real users.</p>`,
+      resources4:true },
+  ]},
+
+  { id:"m7", mi:"Stage 5 · outline", title:"Reliability, deploy & FDE delivery", weeks:"Weeks 16–22", outline:true, lessons:[
+    { id:"s5-o", t:"What this stage covers", outline:true, learn:`
+      <p>The FDE finish: prove reliability, deploy properly, and run the discovery → scope → demo → iterate motion with a real stakeholder. Earning target: anchor client $2,000–5,000/mo, or FDE applications out.</p>
+      <p><b>Topics:</b> evals (accuracy, cost, latency; regressions) · FastAPI + Docker + secrets + logging · one cloud cert · scoping and delivering a capstone + case study.</p>` },
+    { id:"roadmap", t:"Your earning roadmap", learn:`
+      <p>The money checkpoints across the whole path, at ~3 hrs/day:</p>
+      <ul>
+        <li><b>~Week 4</b> — you can read basic code (keystone gap closed). <i>$0, building.</i></li>
+        <li><b>~Week 7</b> — first tool you fully own + demo video. <i>First portfolio asset.</i></li>
+        <li><b>~Week 11</b> — LLM-powered finance tool shipped. <i>First paid work: $300–1,000.</i></li>
+        <li><b>~Week 16</b> — Q&A bot + agent with real users. <i>Pilot / contract: $1,000–3,000.</i></li>
+        <li><b>~Week 22</b> — deployed, evaluated capstone + outreach or FDE apps. <i>Anchor: $2,000–5,000/mo.</i></li>
+        <li><b>Month 6+</b> — scale contracting, remote FDE offer, or grow the product. <i>$4,000–8,000+/mo or FDE salary.</i></li>
+      </ul>
+      <p>Honest caveat: these are targets that depend on shipping + outreach, not on finishing lessons. Your fastest first win may be automating something inside your own firm, where you're both builder and client.</p>` },
+  ]},
+];
+
+const RES_MAIN = `
+  <div class="seg"><div class="seg-k">Your core resources</div><div class="learn">
+    <ul>
+      <li><b>Main video — <a href="https://www.youtube.com/watch?v=_uQrJ0TkZlc" target="_blank" rel="noopener">Programming with Mosh · Python Full Course ↗</a></b> — the daily Watch links jump inside this one video to the exact chapter, so you watch only 8–15 min a day.</li>
+      <li><b>Deeper course — <a href="https://cs50.harvard.edu/python" target="_blank" rel="noopener">Harvard CS50P ↗</a></b> — a full university course with a free certificate option. Use as your thorough second pass.</li>
+      <li><b>Practice anywhere — <a href="https://www.online-python.com" target="_blank" rel="noopener">online-python.com ↗</a></b> — run Python in a browser (use VS Code as your main editor).</li>
+      <li><b>Stuck on an error?</b> Paste it to Claude: "explain this error and the fix in simple words." Understand it before you paste the fix back.</li>
+    </ul></div></div>`;
+const RES_S3 = `
+  <div class="seg"><div class="seg-k">Anchor courses for this stage</div><div class="learn"><ul>
+    <li><a href="https://docs.claude.com" target="_blank" rel="noopener">Claude API docs & Anthropic learning ↗</a> — building with the Claude API.</li>
+    <li><a href="https://www.deeplearning.ai/courses/" target="_blank" rel="noopener">DeepLearning.AI courses ↗</a> — Andrew Ng's agentic-AI and LLM courses (free to audit).</li>
+  </ul></div></div>`;
+const RES_S4 = `
+  <div class="seg"><div class="seg-k">Anchor courses for this stage</div><div class="learn"><ul>
+    <li><a href="https://huggingface.co/learn/agents-course" target="_blank" rel="noopener">Hugging Face AI Agents course ↗</a> — free, with a certificate.</li>
+    <li><a href="https://www.deeplearning.ai/courses/" target="_blank" rel="noopener">DeepLearning.AI ↗</a> — RAG and agent building courses.</li>
+  </ul></div></div>`;
+
+/* ============ APP ============ */
+const LS={prog:"fdeacad_prog_v1",quiz:"fdeacad_quiz_v1",theme:"fdeacad_theme_v1",open:"fdeacad_open_v1",last:"fdeacad_last_v1"};
+function load(k,f){try{const v=localStorage.getItem(k);return v?JSON.parse(v):f;}catch(e){return f;}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+let prog=load(LS.prog,{}), quiz=load(LS.quiz,{}), openMods=load(LS.open,null);
+
+const FLAT=[]; COURSE.forEach(m=>m.lessons.forEach(l=>FLAT.push({...l,mod:m})));
+const TOTAL=FLAT.length;
+if(openMods===null){openMods={}; COURSE.forEach((m,i)=>openMods[m.id]=(i<=1));}
+
+/* theme */
+(function(){const t=load(LS.theme,null);if(t)document.documentElement.setAttribute("data-theme",t);})();
+document.getElementById("themeBtn").onclick=()=>{
+  const c=document.documentElement.getAttribute("data-theme");
+  const n=c==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",n);save(LS.theme,n);
+};
+
+/* mobile menu */
+const rail=document.getElementById("rail"), scrim=document.getElementById("scrim");
+function openRail(o){rail.classList.toggle("open",o);scrim.classList.toggle("open",o);}
+document.getElementById("menuBtn").onclick=()=>openRail(!rail.classList.contains("open"));
+scrim.onclick=()=>openRail(false);
+
+/* render rail */
+function renderRail(){
+  rail.innerHTML="";
+  COURSE.forEach(m=>{
+    const done=m.lessons.filter(l=>prog[l.id]).length;
+    const mod=document.createElement("div");mod.className="mod"+(openMods[m.id]?" open":"");
+    const h=document.createElement("div");h.className="mod-h";
+    h.innerHTML=`<div style="flex:1;min-width:0">
+        <div class="mi">${m.mi}${m.weeks?' · '+m.weeks:''}</div>
+        <h3>${m.title}</h3></div>
+      <span class="mp">${done}/${m.lessons.length}</span><span class="car">▸</span>`;
+    h.onclick=()=>{openMods[m.id]=!openMods[m.id];save(LS.open,openMods);renderRail();};
+    mod.appendChild(h);
+    const wrap=document.createElement("div");wrap.className="lessons";
+    m.lessons.forEach(l=>{
+      const row=document.createElement("div");
+      row.className="lrow"+(prog[l.id]?" done":"")+(l.outline?" outline":"")+(l.id===current?" active":"");
+      row.innerHTML=`<span class="tick"></span><span>${l.t}</span>`;
+      row.onclick=()=>{go(l.id);openRail(false);};
+      wrap.appendChild(row);
+    });
+    mod.appendChild(wrap);rail.appendChild(mod);
+  });
+  const foot=document.createElement("div");foot.style.padding="14px 10px";
+  foot.innerHTML=`<button class="reset" id="resetBtn">reset all progress</button>`;
+  rail.appendChild(foot);
+  document.getElementById("resetBtn").onclick=()=>{
+    prog={};quiz={};save(LS.prog,prog);save(LS.quiz,quiz);renderAll();
+  };
+}
+
+/* render lesson */
+function renderLesson(){
+  const L=FLAT.find(x=>x.id===current)||FLAT[0];
+  const idx=FLAT.indexOf(L);
+  const el=document.getElementById("lesson");
+  let h=`<div class="crumb">${L.mod.mi}${L.mod.weeks?' · '+L.mod.weeks:''}</div><h1>${L.t}</h1>`;
+  if(L.learn)h+=`<div class="seg"><div class="seg-k">Learn</div><div class="learn">${L.learn}</div></div>`;
+  if(L.resources)h+=RES_MAIN;
+  if(L.resources3)h+=RES_S3;
+  if(L.resources4)h+=RES_S4;
+  if(L.watch){
+    var vid=(L.watch.href.match(/[?&]v=([^&]+)/)||[])[1]||"";
+    var st=(L.watch.href.match(/[?&]t=(\d+)/)||[])[1]||"0";
+    h+=`<div class="seg"><div class="seg-k">Watch — ${L.watch.t}</div>`+
+       `<div class="embed"><iframe src="https://www.youtube.com/embed/${vid}?start=${st}&rel=0" title="${L.watch.t}" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen></iframe></div>`+
+       `<div class="embed-meta"><span>${L.watch.meta}</span><a href="${L.watch.href}" target="_blank" rel="noopener">open on YouTube ↗</a></div></div>`;
+  }
+  if(L.code){
+    h+=`<div class="seg"><div class="seg-k">Try — predict, then run</div><pre class="code">${esc(L.code)}</pre>`;
+    if(L.hint)h+=`<div class="hint">${L.hint}</div>`;
+    if(L.reveal)h+=`<div class="reveal" id="rev"><button id="revBtn">Show answer</button><div class="ans">${L.reveal}</div></div>`;
+    h+=`</div>`;
+  } else if(L.hint){h+=`<div class="seg"><div class="hint">${L.hint}</div></div>`;}
+  if(L.task)h+=`<div class="seg"><div class="seg-k">Do</div><div class="task">${L.task}</div></div>`;
+  if(L.quiz&&L.quiz.length)h+=`<div class="seg"><div class="seg-k">Check</div><div class="quiz">${L.quiz.map((q,i)=>qHtml(L.id,i,q)).join("")}</div></div>`;
+  // footer
+  const isdone=!!prog[L.id];
+  h+=`<div class="lfoot">
+      <button class="nav" id="prevBtn" ${idx===0?"disabled":""}>← Prev</button>
+      <button class="complete ${isdone?'isdone':''}" id="cBtn">${isdone?'✓ Completed — click to undo':'Mark complete'}</button>
+      <button class="nav" id="nextBtn" ${idx===TOTAL-1?"disabled":""}>Next →</button>
+    </div>`;
+  el.innerHTML=h;
+  document.getElementById("pane").scrollTop=0;
+
+  if(L.reveal){document.getElementById("revBtn").onclick=()=>document.getElementById("rev").classList.add("show");}
+  if(L.quiz)el.querySelectorAll(".opt").forEach(b=>{if(!b.disabled)b.onclick=()=>answer(b);});
+  document.getElementById("cBtn").onclick=()=>{
+    prog[L.id]=!prog[L.id];if(!prog[L.id])delete prog[L.id];save(LS.prog,prog);
+    renderAll();
+    if(prog[L.id]&&idx<TOTAL-1)go(FLAT[idx+1].id);
+  };
+  const pb=document.getElementById("prevBtn"),nb=document.getElementById("nextBtn");
+  if(pb&&idx>0)pb.onclick=()=>go(FLAT[idx-1].id);
+  if(nb&&idx<TOTAL-1)nb.onclick=()=>go(FLAT[idx+1].id);
+}
+
+function qHtml(lid,i,q){
+  const qid=lid+"_q"+i;const prev=quiz[qid];
+  const opts=q.o.map((o,oi)=>{let c="opt",d="";if(prev!==undefined){d="disabled";if(oi===q.a)c+=" correct";else if(oi===prev.pick&&!prev.correct)c+=" wrong";}
+    return `<button class="${c}" ${d} data-lid="${lid}" data-qi="${i}" data-oi="${oi}">${o}</button>`;}).join("");
+  return `<div class="q"><div class="qt">${q.q}</div><div class="opts">${opts}</div><div class="explain ${prev!==undefined?'show':''}" id="${qid}ex">${q.e}</div></div>`;
+}
+function answer(btn){
+  const lid=btn.dataset.lid,qi=+btn.dataset.qi,pick=+btn.dataset.oi;
+  const L=FLAT.find(x=>x.id===lid);const q=L.quiz[qi];const qid=lid+"_q"+qi;
+  quiz[qid]={pick,correct:pick===q.a};save(LS.quiz,quiz);
+  btn.parentElement.querySelectorAll(".opt").forEach((o,idx)=>{o.disabled=true;if(idx===q.a)o.classList.add("correct");else if(idx===pick)o.classList.add("wrong");});
+  document.getElementById(qid+"ex").classList.add("show");
+}
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+function updateGlobal(){
+  const done=Object.keys(prog).length;
+  const pct=Math.round(done/TOTAL*100);
+  document.getElementById("gFill").style.width=pct+"%";
+  document.getElementById("gPct").textContent=pct+"%";
+}
+function renderAll(){renderRail();renderLesson();updateGlobal();}
+
+let current=load(LS.last,null);
+function go(id){current=id;save(LS.last,id);
+  // open the lesson's module
+  const L=FLAT.find(x=>x.id===id);if(L){openMods[L.mod.id]=true;save(LS.open,openMods);}
+  if(location.hash.slice(1)!==id){history.replaceState(null,"","#"+id);}
+  renderAll();
+}
+// hash deep-link
+const fromHash=location.hash.slice(1);
+if(fromHash&&FLAT.find(x=>x.id===fromHash))current=fromHash;
+if(!current||!FLAT.find(x=>x.id===current))current=FLAT[0].id;
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(h&&FLAT.find(x=>x.id===h)&&h!==current)go(h);});
+
+renderAll();
+</script>
